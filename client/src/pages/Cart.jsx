@@ -1,44 +1,36 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useApp } from "../context/AppContext";
 import { FiPlus, FiMinus, FiTrash2, FiShoppingBag, FiArrowRight } from "react-icons/fi";
 
 export default function Cart() {
-  // Mock cart data - in real app, this would come from context
-  const cartItems = [
-    {
-      id: 1,
-      productId: 1,
-      name: "Wireless Bluetooth Headphones",
-      price: 2499,
-      quantity: 1,
-      image: "https://images.unsplash.com/photo-1583394838336-acd977736f90?ixlib=rb-4.1.0&auto=format&fit=crop&q=80&w=1000",
-      inStock: true
-    },
-    {
-      id: 2,
-      productId: 4,
-      name: "JavaScript Programming Book",
-      price: 899,
-      quantity: 2,
-      image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?ixlib=rb-4.1.0&auto=format&fit=crop&q=80&w=1000",
-      inStock: true
-    }
-  ];
+  const { state, dispatch } = useApp();
+  const navigate = useNavigate();
+  const cartItems = state.cart;
 
   const updateQuantity = (itemId, newQuantity) => {
     if (newQuantity < 1) return;
-    // Update quantity logic
-    console.log(`Update item ${itemId} quantity to ${newQuantity}`);
+    dispatch({ 
+      type: 'UPDATE_CART_QUANTITY', 
+      payload: { itemId, newQuantity } 
+    });
   };
 
   const removeItem = (itemId) => {
-    // Remove item logic
-    console.log(`Remove item ${itemId}`);
+    dispatch({ type: 'REMOVE_FROM_CART', payload: itemId });
+  };
+
+  const handleCheckout = () => {
+    if (!state.isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    navigate('/checkout');
   };
 
   const subtotal = cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
   const shipping = subtotal > 499 ? 0 : 99;
-  const tax = subtotal * 0.18; // 18% GST
+  const tax = subtotal * 0.18;
   const total = subtotal + shipping + tax;
 
   if (cartItems.length === 0) {
@@ -98,9 +90,6 @@ export default function Cart() {
                         </h3>
                       </Link>
                       <p className="text-yellow-500 font-bold text-lg">₹{item.price.toLocaleString()}</p>
-                      {!item.inStock && (
-                        <p className="text-red-500 text-sm">Out of Stock</p>
-                      )}
                     </div>
 
                     {/* Quantity Controls */}
@@ -192,13 +181,13 @@ export default function Cart() {
               </div>
 
               {/* Checkout Button */}
-              <Link
-                to="/checkout"
+              <button
+                onClick={handleCheckout}
                 className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 py-4 rounded-xl font-semibold hover:shadow-2xl hover:shadow-yellow-500/25 transition-all duration-300 flex items-center justify-center gap-3"
               >
                 Proceed to Checkout
                 <FiArrowRight size={20} />
-              </Link>
+              </button>
 
               {/* Security Badges */}
               <div className="mt-6 pt-6 border-t border-gray-700">

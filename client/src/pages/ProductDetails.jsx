@@ -1,10 +1,14 @@
 import React, { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { useApp } from "../context/AppContext";
 import { products } from "../data/products";
 import { Star, ChevronLeft, ChevronRight, Minus, Plus, ShoppingCart, Zap } from "lucide-react";
+import { FiHeart } from "react-icons/fi";
 
 export default function ProductDetails() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { state, dispatch } = useApp();
   const product = products.find(p => p.id === parseInt(id));
 
   const [currentImage, setCurrentImage] = useState(0);
@@ -30,6 +34,7 @@ export default function ProductDetails() {
 
   const images = product.images || [product.img];
   const averageRating = reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length;
+  const isInWishlist = state.wishlist.some(item => item.productId === product.id);
 
   const prevImage = () => setCurrentImage(prev => (prev === 0 ? images.length - 1 : prev - 1));
   const nextImage = () => setCurrentImage(prev => (prev === images.length - 1 ? 0 : prev + 1));
@@ -48,8 +53,49 @@ export default function ProductDetails() {
   };
 
   const addToCart = () => {
+    const cartItem = {
+      id: Date.now(),
+      productId: product.id,
+      name: product.name,
+      price: parseInt(product.price.replace(/[^0-9]/g, '')),
+      quantity: quantity,
+      image: product.images?.[0] || product.img,
+      inStock: true
+    };
+
+    dispatch({ type: 'ADD_TO_CART', payload: cartItem });
     setToast(true);
     setTimeout(() => setToast(false), 3000);
+  };
+
+  const handleBuyNow = () => {
+    if (!state.isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    
+    addToCart();
+    setTimeout(() => {
+      navigate('/checkout');
+    }, 500);
+  };
+
+  const toggleWishlist = () => {
+    if (!state.isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    const wishlistItem = {
+      id: Date.now(),
+      productId: product.id,
+      name: product.name,
+      price: parseInt(product.price.replace(/[^0-9]/g, '')),
+      image: product.images?.[0] || product.img,
+      inStock: true
+    };
+
+    dispatch({ type: 'TOGGLE_WISHLIST', payload: wishlistItem });
   };
 
   const relatedProducts = products.filter(p => p.id !== product.id).slice(0, 4);
@@ -215,9 +261,22 @@ export default function ProductDetails() {
                   <ShoppingCart size={20} />
                   Add to Cart
                 </button>
-                <button className="flex-1 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 text-white py-4 px-8 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl">
+                <button 
+                  onClick={handleBuyNow}
+                  className="flex-1 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 text-white py-4 px-8 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl"
+                >
                   <Zap size={20} />
                   Buy Now
+                </button>
+                <button 
+                  onClick={toggleWishlist}
+                  className={`p-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-3 ${
+                    isInWishlist 
+                      ? "bg-red-600 hover:bg-red-500 text-white" 
+                      : "bg-gray-700 hover:bg-gray-600 text-gray-300"
+                  }`}
+                >
+                  <FiHeart size={20} className={isInWishlist ? "fill-current" : ""} />
                 </button>
               </div>
 

@@ -6,21 +6,80 @@ const initialState = {
   user: null,
   cart: [],
   wishlist: [],
-  orders: []
+  orders: [],
+  isAuthenticated: false
 };
 
 function appReducer(state, action) {
   switch (action.type) {
     case 'SET_USER':
-      return { ...state, user: action.payload };
+      return { 
+        ...state, 
+        user: action.payload,
+        isAuthenticated: !!action.payload 
+      };
+    case 'LOGOUT':
+      return { 
+        ...state, 
+        user: null,
+        isAuthenticated: false 
+      };
     case 'ADD_TO_CART':
-      return { ...state, cart: [...state.cart, action.payload] };
+      const existingItem = state.cart.find(item => item.productId === action.payload.productId);
+      if (existingItem) {
+        return {
+          ...state,
+          cart: state.cart.map(item =>
+            item.productId === action.payload.productId
+              ? { ...item, quantity: item.quantity + action.payload.quantity }
+              : item
+          )
+        };
+      } else {
+        return { ...state, cart: [...state.cart, action.payload] };
+      }
+    case 'UPDATE_CART_QUANTITY':
+      return {
+        ...state,
+        cart: state.cart.map(item =>
+          item.id === action.payload.itemId 
+            ? { ...item, quantity: action.payload.newQuantity }
+            : item
+        )
+      };
     case 'REMOVE_FROM_CART':
-      return { ...state, cart: state.cart.filter(item => item.id !== action.payload) };
+      return { 
+        ...state, 
+        cart: state.cart.filter(item => item.id !== action.payload) 
+      };
+    case 'CLEAR_CART':
+      return { ...state, cart: [] };
     case 'ADD_TO_WISHLIST':
+      const existingWishlistItem = state.wishlist.find(item => item.productId === action.payload.productId);
+      if (existingWishlistItem) {
+        return state;
+      }
       return { ...state, wishlist: [...state.wishlist, action.payload] };
     case 'REMOVE_FROM_WISHLIST':
-      return { ...state, wishlist: state.wishlist.filter(item => item.id !== action.payload) };
+      return { 
+        ...state, 
+        wishlist: state.wishlist.filter(item => item.id !== action.payload) 
+      };
+    case 'REMOVE_FROM_WISHLIST_BY_PRODUCT_ID':
+      return { 
+        ...state, 
+        wishlist: state.wishlist.filter(item => item.productId !== action.payload) 
+      };
+    case 'TOGGLE_WISHLIST':
+      const existingWishItem = state.wishlist.find(item => item.productId === action.payload.productId);
+      if (existingWishItem) {
+        return {
+          ...state,
+          wishlist: state.wishlist.filter(item => item.productId !== action.payload.productId)
+        };
+      } else {
+        return { ...state, wishlist: [...state.wishlist, action.payload] };
+      }
     case 'ADD_ORDER':
       return { ...state, orders: [...state.orders, action.payload] };
     default:
@@ -31,18 +90,33 @@ function appReducer(state, action) {
 export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
-  // Load from localStorage on mount
   useEffect(() => {
     const savedState = localStorage.getItem('appState');
     if (savedState) {
-      dispatch({ type: 'SET_STATE', payload: JSON.parse(savedState) });
+      const parsedState = JSON.parse(savedState);
+      if (parsedState.user) {
+        dispatch({ type: 'SET_USER', payload: parsedState.user });
+      }
+      if (parsedState.cart) {
+        parsedState.cart.forEach(item => {
+          dispatch({ type: 'ADD_TO_CART', payload: item });
+        });
+      }
+      if (parsedState.wishlist) {
+        parsedState.wishlist.forEach(item => {
+          dispatch({ type: 'ADD_TO_WISHLIST', payload: item });
+        });
+      }
     }
   }, []);
 
-  // Save to localStorage when state changes
   useEffect(() => {
-    localStorage.setItem('appState', JSON.stringify(state));
-  }, [state]);
+    localStorage.setItem('appState', JSON.stringify({
+      user: state.user,
+      cart: state.cart,
+      wishlist: state.wishlist
+    }));
+  }, [state.user, state.cart, state.wishlist]);
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>
